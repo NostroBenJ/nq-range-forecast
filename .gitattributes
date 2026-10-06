@@ -1,0 +1,8 @@
+# The frozen files are hashed in FROZEN*.txt: never convert their line endings,
+# so sha256sum -c still passes on any checkout.
+FROZEN*.txt -text
+PREREGISTRATION*.md -text
+range_model.py -text
+verify.py -text
+touch_test.py -text
+verify_touch.py -text
