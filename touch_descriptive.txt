@@ -1,0 +1,12 @@
+A (NT 2021-2026) out-of-sample days 1175
+  reached the forecast at some point:  53%
+  of those, went on to 1.10x forecast: 78%
+  of those, went on to 1.25x forecast: 55%
+  of those, went on to 1.50x forecast: 29%
+  of those, broke the top of the 80% band: 26%
+B (LSE 2016-2020) out-of-sample days 878
+  reached the forecast at some point:  52%
+  of those, went on to 1.10x forecast: 84%
+  of those, went on to 1.25x forecast: 61%
+  of those, went on to 1.50x forecast: 38%
+  of those, broke the top of the 80% band: 24%

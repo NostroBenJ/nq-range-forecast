@@ -1,0 +1,13 @@
+1403 model sessions 2021-02 .. 2026-09; 1403 compared, 0 without a 22-session 30-minute history
+inputs identical to 1e-9 (share of sessions):  lr1 99.9%  lr5 99.3%  lr22 96.9%  lon 100.0%  lvix 100.0%  fomc 100.0%  mon 100.0%  fri 100.0%
+forecast difference: median 0.0000%, within 0.1% on 97.6%, within 1% on 99.5%, max 9.83%
+sessions whose overnight had fewer than 29 of 31 half-hours: 3
+largest differences (|diff|, session, indicator, model, inputs that differ):
+  9.83%  2021-08-27  131.3  145.6  ['lr5', 'lr22']
+  8.33%  2021-08-31  147.0  160.3  ['lr5', 'lr22']
+  6.26%  2021-08-26  138.5  147.7  ['lr1', 'lr5', 'lr22']
+  4.64%  2021-08-30  104.6  109.7  ['lr5', 'lr22']
+  4.46%  2026-07-27  323.8  338.9  ['lr1', 'lr5', 'lr22']
+  2.12%  2026-07-30  550.3  538.9  ['lr5', 'lr22']
+  1.41%  2026-07-29  645.1  636.1  ['lr5', 'lr22']
+  0.85%  2026-07-31  432.8  436.6  ['lr5', 'lr22']

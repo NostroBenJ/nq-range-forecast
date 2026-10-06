@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    NQ Range Forecast as a Quantower indicator. Quantower 1.146.18 runs on .NET 10 with the Windows Desktop runtime, so
+    net10.0-windows + Microsoft.WindowsDesktop.App, and its TradingPlatform.BusinessLayer.dll is referenced,
+    never shipped.
+
+      dotnet build Indicator/NqRangeForecast.csproj -c Release (artifacts-path option) <scratch>
+      ... -p:DeployToQuantower=true   copies NqRangeForecast.dll (+pdb) to Settings\Scripts\Indicators\NqRangeForecast\
+  -->
+
+  <PropertyGroup>
+    <QuantowerPath Condition="'$(QuantowerPath)' == ''">C:\Quantower\TradingPlatform\v1.146.18\bin</QuantowerPath>
+    <QuantowerRoot Condition="'$(QuantowerRoot)' == ''">$([System.IO.Path]::GetFullPath('$(QuantowerPath)\..\..\..'))</QuantowerRoot>
+    <QuantowerBusinessLayerDll>$(QuantowerPath)\TradingPlatform.BusinessLayer.dll</QuantowerBusinessLayerDll>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>NqRangeForecast</AssemblyName>
+    <RootNamespace>NqRangeForecast</RootNamespace>
+    <DeployToQuantower Condition="'$(DeployToQuantower)' == ''">false</DeployToQuantower>
+    <QuantowerIndicatorFolder>$(QuantowerRoot)\Settings\Scripts\Indicators\NqRangeForecast</QuantowerIndicatorFolder>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TradingPlatform.BusinessLayer">
+      <HintPath>$(QuantowerBusinessLayerDll)</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The same file the check harness runs on the NinjaTrader data (compare_core.py). -->
+    <Compile Include="..\Core\RangeCore.cs" Link="RangeCore.cs" />
+  </ItemGroup>
+
+  <Target Name="CheckQuantowerBusinessLayer" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(QuantowerBusinessLayerDll)')"
+           Text="TradingPlatform.BusinessLayer.dll not found at $(QuantowerBusinessLayerDll). Pass -p:QuantowerPath=&lt;Quantower&gt;\TradingPlatform\v&lt;version&gt;\bin." />
+  </Target>
+
+  <Target Name="DeployToQuantowerIndicators" AfterTargets="Build" Condition="'$(DeployToQuantower)' == 'true'">
+    <ItemGroup>
+      <_DeployFile Include="$(OutDir)NqRangeForecast.dll;$(OutDir)NqRangeForecast.pdb" />
+    </ItemGroup>
+    <MakeDir Directories="$(QuantowerIndicatorFolder)" />
+    <Copy SourceFiles="@(_DeployFile)" DestinationFolder="$(QuantowerIndicatorFolder)" Condition="Exists('%(FullPath)')" SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="NQ Range Forecast deployed to $(QuantowerIndicatorFolder)" />
+  </Target>
+
+</Project>

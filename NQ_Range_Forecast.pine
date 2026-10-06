@@ -1,0 +1,362 @@
+//@version=6
+// ════════════════════════════════════════════════════════════════════════════
+//  N Q   R A N G E   F O R E C A S T  ·  v1.2  (Downloads\nq_range)
+//  Forecasts the size of today's 09:30-16:00 NQ range before the open, and
+//  draws where the day would reach that size from its low or from its high.
+//
+//  What the research behind it says (2026-10-04):
+//   · Size is forecastable. Out of sample the model explained 41% of the
+//     variation in the daily range on 2022-2026, against 25% for the plain
+//     22-day average (Newey-West t +5.40), and 64% vs 57% on 2017-2020. Its
+//     80% band caught 78.6% / 78.7% of days. (RESULT.md)
+//   · Direction is not. On days the range reached the forecast, price went
+//     a quarter-forecast further first on 248 days and came back a quarter
+//     first on 251. Following or fading the level both made about $0 a trade
+//     at one MNQ, with $4.8k-7.1k drawdowns. (RESULT_TOUCH.md)
+//     The levels mark SIZE, not entries.
+//   · The typical miss is still ~30% of the range. Read it as "what kind of
+//     day is this": stops, targets, position size, when the day is used up.
+//
+//  Inputs, all from before 09:30 New York: the ranges of the last 1, 5 and 22
+//  complete regular sessions, the overnight range 18:00-09:30, VIX's last
+//  close before today, FOMC statement day, Monday, Friday. Coefficients are
+//  the final fit in model.json (1,403 NinjaTrader sessions, 2021-02 .. 2026-09).
+//
+//  History comes from a 30-minute request on the extended session, so any
+//  chart of 30 minutes or less works and the overnight is counted even on an
+//  RTH-only chart. The forecast is fixed on the first regular-session bar and
+//  never changes after; before the open the table shows a provisional number
+//  that moves with the overnight range.
+//
+//  v1.2: a level price has reached stays on the chart, faded, to 16:00, so
+//  the breaks show as well as the bounces, and the table tallies how many
+//  touches on this chart closed beyond the level against back inside.
+// ════════════════════════════════════════════════════════════════════════════
+indicator("NQ Range Forecast", overlay = true, max_labels_count = 100)
+
+TZ = "America/New_York"
+
+// ─── model: model.json, final fit 2026-10-04 ────────────────────────────────
+B0    = 0.74768586
+BLR1  = 0.04139623
+BLR5  = 0.36715751
+BLR22 = 0.12483806
+BLON  = 0.26695766
+BVIX  = 0.14789676
+BFOMC = 0.34048708
+BMON  = -0.08346899
+BFRI  = -0.00811821
+Q10   = -0.44011802
+Q90   = 0.46002183
+
+// Scheduled FOMC statement days (federalreserve.gov, fetched 2026-10-01 and 2026-10-04).
+var array<int> FOMC = array.from(
+     20210127, 20210317, 20210428, 20210616, 20210728, 20210922, 20211103, 20211215,
+     20220126, 20220316, 20220504, 20220615, 20220727, 20220921, 20221102, 20221214,
+     20230201, 20230322, 20230503, 20230614, 20230726, 20230920, 20231101, 20231213,
+     20240131, 20240320, 20240501, 20240612, 20240731, 20240918, 20241107, 20241218,
+     20250129, 20250319, 20250507, 20250618, 20250730, 20250917, 20251029, 20251210,
+     20260128, 20260318, 20260429, 20260617, 20260729, 20260916, 20261028, 20261209,
+     20270127, 20270317, 20270428, 20270609, 20270728, 20270915, 20271027, 20271208)
+
+// ─── inputs ─────────────────────────────────────────────────────────────────
+gL = "Levels"
+showF    = input.bool(true, "Forecast levels", group = gL,
+     tooltip = "Session low + forecast and session high - forecast: where the day would reach its forecast size. Tested: from there price continues or reverses 50/50.")
+showBand = input.bool(true, "80% band edges", group = gL)
+keepAfter = input.bool(true, "Keep a level after price reaches it (faded)", group = gL,
+     tooltip = "Without this the level disappears when price reaches it, so only the bounces stay on the chart. Kept, it runs to 16:00 and the breaks show too.")
+cF       = input.color(#2a78d6, "Forecast level", group = gL)
+cB       = input.color(#898781, "Band edge", group = gL)
+
+gT = "Table"
+showTable = input.bool(true, "Show table", group = gT)
+nHist     = input.int(5, "Recent sessions listed", minval = 0, maxval = 10, group = gT)
+tPos      = input.string("top_right", "Position", options = ["top_right", "bottom_right", "top_left", "bottom_left"], group = gT)
+
+gS = "Data"
+vixSym = input.symbol("CBOE:VIX", "VIX symbol", group = gS)
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+f_ymd(t) => year(t, TZ) * 10000 + month(t, TZ) * 100 + dayofmonth(t, TZ)
+
+f_fc(r1, m5, m22, onR, vix, fomc, mon, fri) =>
+    lf = B0 + BLR1 * math.log(r1) + BLR5 * math.log(m5) + BLR22 * math.log(m22) + BLON * math.log(onR) +
+         BVIX * math.log(vix) + BFOMC * fomc + BMON * mon + BFRI * fri
+    [math.exp(lf), math.exp(lf + Q10), math.exp(lf + Q90)]
+
+f_n(x) => na(x) ? "-" : str.tostring(math.round(x))
+
+// Runs on 30-minute bars of the extended session. Keeps the last 22 complete
+// regular-session ranges (13 of 13 half-hours, so half days drop out as the
+// model's sessions did) and the overnight range since 18:00.
+f_ctx() =>
+    var array<float> rngs = array.new<float>()
+    var float rHi = na
+    var float rLo = na
+    var int   rN  = 0
+    var float oHi = na
+    var float oLo = na
+    var int   oN  = 0
+    m0   = hour(time, TZ) * 60 + minute(time, TZ)
+    mp   = nz(m0[1], -1)
+    rth  = m0 >= 570 and m0 < 960
+    wasR = mp >= 570 and mp < 960
+    if wasR and not rth
+        if rN >= 13
+            array.push(rngs, rHi - rLo)
+            if array.size(rngs) > 22
+                array.shift(rngs)
+        rHi := na
+        rLo := na
+        rN  := 0
+    if rth
+        rHi := na(rHi) ? high : math.max(rHi, high)
+        rLo := na(rLo) ? low : math.min(rLo, low)
+        rN  += 1
+    if m0 >= 1080 and mp < 1080
+        oHi := high
+        oLo := low
+        oN  := 1
+    else if m0 >= 1080 or m0 < 570
+        oHi := na(oHi) ? high : math.max(oHi, high)
+        oLo := na(oLo) ? low : math.min(oLo, low)
+        oN  += 1
+    n   = array.size(rngs)
+    r1  = n > 0 ? array.get(rngs, n - 1) : na
+    m5  = n >= 5 ? array.avg(array.slice(rngs, n - 5, n)) : na
+    m22 = n >= 22 ? array.avg(rngs) : na
+    [r1, m5, m22, n, oHi - oLo, oN]
+
+// ─── data ───────────────────────────────────────────────────────────────────
+ctxTicker = ticker.modify(syminfo.tickerid, session.extended)
+[r1, m5, m22, nS, onR, onN] = request.security(ctxTicker, "30", f_ctx(), lookahead = barmerge.lookahead_off)
+
+// VIX: the latest daily close dated BEFORE the session's date. The current
+// daily bar's close is only used when that bar is dated earlier than the
+// session, so it is already final; otherwise the previous bar's close.
+[vC, vT, vC1, vT1] = request.security(vixSym, "D", [close, time, close[1], time[1]], lookahead = barmerge.lookahead_on)
+
+mm       = hour(time, TZ) * 60 + minute(time, TZ)
+inRth    = mm >= 570 and mm < 960
+sessT    = mm >= 1080 ? time + 86400000 : time          // evening bars belong to the next session
+sessYmd  = f_ymd(sessT)
+dow      = dayofweek(sessT, TZ)
+fMon     = dow == dayofweek.monday ? 1.0 : 0.0
+fFri     = dow == dayofweek.friday ? 1.0 : 0.0
+fFomc    = array.includes(FOMC, sessYmd) ? 1.0 : 0.0
+vixOld   = f_ymd(vT) < sessYmd
+vix      = vixOld ? vC : vC1
+vixTime  = vixOld ? vT : vT1
+inputsOk = nS >= 22 and not na(m22) and not na(onR) and onR > 0 and not na(vix) and vix > 0
+[pF, pL, pH] = f_fc(r1, m5, m22, onR, vix, fFomc, fMon, fFri)
+
+// ─── the session ────────────────────────────────────────────────────────────
+prevRth  = inRth[1]
+prevYmd  = sessYmd[1]
+prevC    = close[1]
+firstRth = inRth and (not prevRth or sessYmd != prevYmd)
+leftRth  = prevRth and (not inRth or firstRth)
+expBars  = 23400.0 / timeframe.in_seconds()
+
+var float F     = na
+var float L80   = na
+var float H80   = na
+var float A22   = na
+var float fOn   = na
+var int   fOnN  = 0
+var float fVix  = na
+var int   fVixT = na
+var int   fN    = 0
+var float sH    = na
+var float sL    = na
+var int   nb    = 0
+var bool  done  = false
+var bool  doneB = false
+var bool  doneL = false
+var float frozen  = na        // the level as it stood when price reached it
+var int   fSide   = 0         // +1 reached with a new high, -1 with a new low
+var int   fMin    = 0         // New York minute of the day it was reached
+var int   tDays   = 0         // tally over the sessions on this chart: complete, with a forecast
+var int   tReach  = 0         //   reached it before 15:30 (the test's window)
+var int   tBeyond = 0         //   and closed beyond the level at 16:00
+
+var array<int>   hT   = array.new<int>()
+var array<float> hF   = array.new<float>()
+var array<float> hLo  = array.new<float>()
+var array<float> hHi  = array.new<float>()
+var array<float> hAct = array.new<float>()
+
+// close the previous session: its row's actual range (-1 if incomplete), and the tally
+if leftRth
+    complete = nb >= 0.96 * expBars
+    if array.size(hAct) > 0
+        k = array.size(hAct) - 1
+        if na(array.get(hAct, k))
+            array.set(hAct, k, complete ? sH - sL : -1.0)
+    if complete and not na(F)
+        tDays += 1
+        if done and fSide != 0 and fMin < 930
+            tReach += 1
+            if fSide * (prevC - frozen) > 0
+                tBeyond += 1
+
+if firstRth
+    sH    := high
+    sL    := low
+    nb    := 1
+    done  := false
+    doneB := false
+    doneL := false
+    frozen := na
+    fSide := 0
+    F     := inputsOk ? pF : na
+    L80   := inputsOk ? pL : na
+    H80   := inputsOk ? pH : na
+    A22   := m22
+    fOn   := onR
+    fOnN  := onN
+    fVix  := vix
+    fVixT := vixTime
+    fN    := nS
+    array.push(hT, time)
+    array.push(hF, F)
+    array.push(hLo, L80)
+    array.push(hHi, H80)
+    array.push(hAct, na)
+    if array.size(hT) > 10
+        array.shift(hT)
+        array.shift(hF)
+        array.shift(hLo)
+        array.shift(hHi)
+        array.shift(hAct)
+else if inRth
+    sH := math.max(sH, high)
+    sL := math.min(sL, low)
+    nb += 1
+
+wasDone  = done
+wasDoneB = doneB
+wasDoneL = doneL
+rng      = sH - sL
+
+if inRth and not na(F) and not done and rng >= F
+    done := true
+    hiBar = high >= sH
+    loBar = low <= sL
+    up    = hiBar and not loBar
+    dn    = loBar and not hiBar
+    frozen := up ? sL + F : dn ? sH - F : na
+    fSide  := up ? 1 : dn ? -1 : 0
+    fMin   := mm
+    txt   =(up ? "forecast size reached ↑" : dn ? "forecast size reached ↓" : "forecast size reached") + "\n50/50 from here (tested)"
+    label.new(bar_index, dn ? low : high, txt, style = dn ? label.style_label_up : label.style_label_down,
+         color = color.new(cF, 15), textcolor = color.white, size = size.small)
+if inRth and not na(H80) and not doneB and rng >= H80
+    doneB := true
+if inRth and not na(L80) and not doneL and rng >= L80
+    doneL := true
+
+// ─── plots ──────────────────────────────────────────────────────────────────
+lv = inRth and not na(F)
+// Kept out of the status line, where outside the session they would only show empty values.
+plot(showF and lv and not wasDone ? sL + F : na, "Forecast level above (low + forecast)", color = cF, linewidth = 2, style = plot.style_linebr, display = display.all - display.status_line)
+plot(showF and lv and not wasDone ? sH - F : na, "Forecast level below (high - forecast)", color = cF, linewidth = 2, style = plot.style_linebr, display = display.all - display.status_line)
+plot(showBand and lv and not wasDoneB ? sL + H80 : na, "Band top above", color = cB, linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted, display = display.pane)
+plot(showBand and lv and not wasDoneB ? sH - H80 : na, "Band top below", color = cB, linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted, display = display.pane)
+plot(showBand and lv and not wasDoneL ? sL + L80 : na, "Band bottom above", color = color.new(cB, 40), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted, display = display.pane)
+plot(showBand and lv and not wasDoneL ? sH - L80 : na, "Band bottom below", color = color.new(cB, 40), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted, display = display.pane)
+plot(showF and keepAfter and inRth and done and not na(frozen) ? frozen : na, "Level after it was reached", color = color.new(cF, 55), linewidth = 2, style = plot.style_linebr, display = display.pane)
+plot(F,   "Forecast (pts)", display = display.data_window)
+plot(L80, "80% band low (pts)", display = display.data_window)
+plot(H80, "80% band high (pts)", display = display.data_window)
+
+// ─── table ──────────────────────────────────────────────────────────────────
+pos = tPos == "top_right" ? position.top_right : tPos == "bottom_right" ? position.bottom_right :
+     tPos == "top_left" ? position.top_left : position.bottom_left
+var table tb = na
+
+f_cell(c, r, s, col) =>
+    table.cell(tb, c, r, s, text_color = col, text_size = size.small, text_halign = text.align_left)
+
+f_row(r, a, b, c, d) =>
+    fg = chart.fg_color
+    f_cell(0, r, a, color.new(fg, 35))
+    f_cell(1, r, b, fg)
+    f_cell(2, r, c, color.new(fg, 35))
+    f_cell(3, r, d, fg)
+
+f_wide(r, s, col) =>
+    f_cell(0, r, s, col)
+    table.merge_cells(tb, 0, r, 3, r)
+
+if showTable and barstate.islast
+    if not na(tb)
+        table.delete(tb)                                          // rebuilt each update: merged rows change
+    tb := table.new(pos, 4, 28, bgcolor = color.new(chart.bg_color, 8), border_color = color.new(chart.fg_color, 80),
+         border_width = 1, frame_color = color.new(chart.fg_color, 70), frame_width = 1)
+    fg      = chart.fg_color
+    fixed   = inRth or (mm >= 960 and mm < 1080)                 // today's forecast is fixed
+    r = 0
+    f_wide(r, "NQ range forecast  ·  " + str.format_time(sessT, "EEE MM-dd", TZ) + (fixed ? "" : "  (provisional)"), fg)
+    r += 1
+    if fixed
+        f_row(r, "Forecast", f_n(F) + " pts", "80% band", f_n(L80) + " - " + f_n(H80))
+        r += 1
+        pct = na(F) ? na : rng / F
+        f_row(r, "Range so far", f_n(rng) + " pts", "of forecast", na(pct) ? "-" : str.tostring(math.round(pct * 100)) + "%")
+        r += 1
+        rel = na(F) or na(A22) ? na : F / A22 - 1
+        f_row(r, "22-day avg", f_n(A22) + " pts", "forecast vs avg", na(rel) ? "-" : (rel >= 0 ? "+" : "") + str.tostring(math.round(rel * 100)) + "%")
+        r += 1
+        f_row(r, "Overnight", f_n(fOn) + " pts", "VIX", na(fVix) ? "-" : str.tostring(fVix, "#.0") + " (" + str.format_time(fVixT, "MM-dd", TZ) + ")")
+        r += 1
+    else
+        f_row(r, "Forecast", f_n(inputsOk ? pF : na) + " pts", "80% band", f_n(inputsOk ? pL : na) + " - " + f_n(inputsOk ? pH : na))
+        r += 1
+        rel = inputsOk ? pF / m22 - 1 : na
+        f_row(r, "22-day avg", f_n(m22) + " pts", "forecast vs avg", na(rel) ? "-" : (rel >= 0 ? "+" : "") + str.tostring(math.round(rel * 100)) + "%")
+        r += 1
+        f_row(r, "Overnight so far", f_n(onR) + " pts", "VIX", na(vix) ? "-" : str.tostring(vix, "#.0") + " (" + str.format_time(vixTime, "MM-dd", TZ) + ")")
+        r += 1
+        f_wide(r, "Fixed at 09:30 New York; levels draw from then. Overnight " + str.tostring(onN) + " of 31 half-hours in.", color.new(fg, 35))
+        r += 1
+    f_row(r, "FOMC day", fFomc > 0 ? "YES (about +41%)" : "no", "sessions", str.tostring(fixed ? fN : nS) + " / 22")
+    r += 1
+    f_wide(r, "Levels mark size, not entries: tested 50/50.", color.new(fg, 35))
+    r += 1
+    if tDays > 0
+        f_wide(r, "This chart: reached on " + str.tostring(tReach) + " of " + str.tostring(tDays) + " days; closed beyond " +
+             str.tostring(tBeyond) + ", back inside " + str.tostring(tReach - tBeyond) + "  (5-yr test: 51 / 49%)", color.new(fg, 35))
+        r += 1
+    // warnings
+    tfOk = timeframe.isseconds or (timeframe.isminutes and timeframe.multiplier <= 30 and 30 % timeframe.multiplier == 0)
+    if not tfOk
+        f_wide(r, "Use a chart of 30 minutes or less (1, 2, 3, 5, 10, 15 or 30).", color.orange)
+        r += 1
+    if syminfo.root != "NQ" and syminfo.root != "MNQ"
+        f_wide(r, "Fitted on NQ; untested on " + syminfo.root + ".", color.orange)
+        r += 1
+    if (fixed ? fN : nS) < 22
+        f_wide(r, "History: " + str.tostring(fixed ? fN : nS) + " of 22 complete sessions loaded.", color.orange)
+        r += 1
+    if fixed and fOnN < 29                                       // before 09:30 it is still filling
+        f_wide(r, "Overnight had " + str.tostring(fOnN) + " of 31 half-hour bars (holiday or data gap).", color.orange)
+        r += 1
+    if na(fixed ? fVix : vix)
+        f_wide(r, "No VIX close from " + vixSym + ".", color.orange)
+        r += 1
+    // recent sessions
+    nH = array.size(hT)
+    if nHist > 0 and nH > 0
+        f_row(r, "Session", "Forecast", "80% band", "Actual")
+        r += 1
+        lo = math.max(0, nH - nHist)
+        for i = nH - 1 to lo
+            a = array.get(hAct, i)
+            fi = array.get(hF, i)
+            li = array.get(hLo, i)
+            hi = array.get(hHi, i)
+            act = na(a) ? f_n(rng) + " live" : a < 0 ? "incomplete" : f_n(a) + (na(fi) ? "" : a >= li and a <= hi ? "  in" : "  OUT")
+            f_row(r, str.format_time(array.get(hT, i), "EEE MM-dd", TZ), f_n(fi), f_n(li) + " - " + f_n(hi), act)
+            r += 1

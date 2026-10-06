@@ -1,0 +1,59 @@
+=== Era A (NT 1-minute, 2022-2026): 1175 out-of-sample days
+  dropped / not used: {'0.8F never reached': 266, '0.8F reached after 15:30': 39, '1.0F never reached': 552, '1.0F reached after 15:30': 44, '1.2F never reached': 781, '1.2F reached after 15:30': 38}
+  touches of the forecast used: 579 (49% of days); up 266, down 313
+
+  PRIMARY  R = side*(close - level)/F:  mean +0.0273 F   Newey-West t +1.22
+           median +0.0146 F,  closed beyond the level (continuation) 51%,  mean in points +4.8
+    2022: n 117  mean R +0.0311  t +0.56
+    2023: n 125  mean R +0.0989  t +2.66
+    2024: n 135  mean R -0.0293  t -0.73
+    2025: n 113  mean R +0.0617  t +0.95
+    2026: n  89  mean R -0.0362  t -0.96
+    touched before 12:00: n 293  mean R +0.0277  t +0.75
+    touched 12:00-14:00 : n 175  mean R +0.0432  t +1.14
+    touched 14:00-15:30 : n 111  mean R +0.0009  t +0.02
+
+  SECONDARY (no verdict)
+    first to +-0.25F: continuation first 248, reversal first 251, neither by close 73, ambiguous 7
+      continuation share 49.7% (t vs 50%: -0.14);  bounds with ambiguous 49.0% - 50.4%
+    first to +-0.5F: continuation first 155, reversal first 153, neither by close 269, ambiguous 2
+      continuation share 50.3% (t vs 50%: +0.13);  bounds with ambiguous 50.0% - 50.6%
+    level 0.8F: n  870  mean R +0.0470  t +2.44
+    level 1.0F: n  579  mean R +0.0273  t +1.22
+    level 1.2F: n  356  mean R +0.0261  t +0.96
+
+  TRADES, one MNQ, net of $1 commission and 1-tick slippage
+    follow  trades  579  net $  +1.13/trade  t +0.14  wins 37%  total $+652 ($+138/yr)  worst $-384  max drawdown $7,120  without best 1%: $-5,761
+    fade    trades  552  net $  -1.62/trade  t -0.19  wins 35%  total $-894 ($-189/yr)  worst $-363  max drawdown $4,767  without best 1%: $-7,263
+
+=== Era B (LSE 5-minute, 2017-2020): 878 out-of-sample days
+  dropped / not used: {'0.8F ambiguous bar': 1, '0.8F never reached': 248, '0.8F reached after 15:30': 32, '1.0F never reached': 425, '1.0F reached after 15:30': 42, '1.2F never reached': 567, '1.2F reached after 15:30': 36}
+  touches of the forecast used: 411 (47% of days); up 199, down 212
+
+  PRIMARY  R = side*(close - level)/F:  mean +0.0535 F   Newey-West t +1.75
+           median +0.0320 F,  closed beyond the level (continuation) 53%,  mean in points +3.0
+    2017: n 128  mean R +0.0445  t +0.67
+    2018: n 131  mean R +0.0881  t +1.54
+    2019: n  75  mean R +0.0070  t +0.13
+    2020: n  77  mean R +0.0547  t +1.22
+    touched before 12:00: n 246  mean R +0.0509  t +1.01
+    touched 12:00-14:00 : n  90  mean R +0.0678  t +1.10
+    touched 14:00-15:30 : n  75  mean R +0.0445  t +0.67
+
+  SECONDARY (no verdict)
+    first to +-0.25F: continuation first 154, reversal first 136, neither by close 35, ambiguous 86
+      continuation share 53.1% (t vs 50%: +1.02);  bounds with ambiguous 41.0% - 63.8%
+    first to +-0.5F: continuation first 145, reversal first 107, neither by close 150, ambiguous 9
+      continuation share 57.5% (t vs 50%: +2.45);  bounds with ambiguous 55.6% - 59.0%
+    level 0.8F: n  597  mean R +0.0233  t +0.89
+    level 1.0F: n  411  mean R +0.0535  t +1.75
+    level 1.2F: n  275  mean R +0.0773  t +2.02
+
+  TRADES, one MNQ, net of $1 commission and 1-tick slippage
+    follow  trades  411  net $  -1.12/trade  t -0.28  wins 31%  total $-458 ($-116/yr)  worst $-143  max drawdown $2,054  without best 1%: $-2,632
+    fade    trades  382  net $  -0.44/trade  t -0.10  wins 31%  total $-166 ($-42/yr)  worst $-142  max drawdown $1,521  without best 1%: $-2,148
+
+=== Pre-registered verdict
+  era A mean R +0.0273 (t +1.22), era B mean R +0.0535 (t +1.75)
+  VERDICT: NEITHER
+  no direction, so neither rule is tradeable by the pre-registered rule

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Market data is never committed (vendor terms); the scripts read it from local paths.
+data/
+quantower/*_out*.csv
+
+# .NET build output
+bin/
+obj/

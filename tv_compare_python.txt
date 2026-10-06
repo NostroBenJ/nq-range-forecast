@@ -1,0 +1,30 @@
+NQ range forecast for Monday 2026-09-28
+  Forecast 09:30-16:00 range     320 pts
+  80% band                       206 - 507 pts
+    overnight range 18:00-09:30    367 pts   complete, high 30,898.25 low 30,531.00
+    VIX close                     14.9       (Fri 09-25)
+    Final: actual 402 pts vs forecast 320 (+26%), inside the band
+NQ range forecast for Tuesday 2026-09-29
+  Forecast 09:30-16:00 range     336 pts
+  80% band                       217 - 533 pts
+    overnight range 18:00-09:30    346 pts   complete, high 30,717.75 low 30,372.25
+    VIX close                     16.1       (Mon 09-28)
+    Final: actual 221 pts vs forecast 336 (-34%), inside the band
+NQ range forecast for Wednesday 2026-09-30
+  Forecast 09:30-16:00 range     300 pts
+  80% band                       193 - 476 pts
+    overnight range 18:00-09:30    267 pts   complete, high 30,779.50 low 30,512.25
+    VIX close                     16.0       (Tue 09-29)
+    Final: actual 225 pts vs forecast 300 (-25%), inside the band
+NQ range forecast for Thursday 2026-10-01
+  Forecast 09:30-16:00 range     337 pts
+  80% band                       217 - 534 pts
+    overnight range 18:00-09:30    467 pts   complete, high 31,151.50 low 30,684.50
+    VIX close                     16.3       (Wed 09-30)
+    Final: actual 354 pts vs forecast 337 (+5%), inside the band
+NQ range forecast for Friday 2026-10-02
+  Forecast 09:30-16:00 range     342 pts
+  80% band                       221 - 543 pts
+    overnight range 18:00-09:30    462 pts   complete, high 31,222.25 low 30,760.25
+    VIX close                     16.4       (Thu 10-01)
+    Final: actual 294 pts vs forecast 342 (-14%), inside the band

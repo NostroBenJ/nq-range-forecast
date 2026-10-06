@@ -1,0 +1,36 @@
+=== Era A (NT 2021-2026): 1403 kept sessions, dropped {'incomplete': 58, 'excluded': 0, 'warmup': 22, 'no_overnight': 0, 'no_vix': 0}
+  out-of-sample days 1175 (2022-01-03 .. 2026-09-25)
+  R2 of ln range       model +0.412   baseline (22d mean) +0.253
+  MSE of ln range      model 0.1299   baseline 0.1649
+  mean abs error       model 31.5% of the range   baseline 32.8%
+  Newey-West t (base SE - model SE, 5 lags): +5.40
+  80% band coverage    78.6%
+    2022: n 250  R2 model +0.132 base +0.089  abs err 30.1% vs 29.8%  coverage 80.8%
+    2023: n 247  R2 model +0.142 base -0.045  abs err 29.6% vs 29.2%  coverage 83.0%
+    2024: n 249  R2 model +0.271 base +0.084  abs err 33.0% vs 34.5%  coverage 74.7%
+    2025: n 247  R2 model +0.409 base +0.072  abs err 33.5% vs 38.5%  coverage 76.5%
+    2026: n 182  R2 model +0.184 base +0.045  abs err 31.4% vs 31.6%  coverage 78.0%
+  last fit coefficients: const +0.815  lr1 +0.037  lr5 +0.363  lr22 +0.102  lon +0.269  lvix +0.178  fomc +0.367  mon -0.083  fri -0.009
+  2026: median forecast 345 pts, median 80% band width 323 pts, median actual 370 pts
+  last 5 days: 2026-09-21 fc 297 [191-469] act 646; 2026-09-22 fc 313 [202-495] act 302; 2026-09-23 fc 282 [182-446] act 370; 2026-09-24 fc 356 [230-563] act 334; 2026-09-25 fc 333 [215-527] act 268
+
+=== Era B (LSE 2016-2020): 968 kept sessions, dropped {'incomplete': 44, 'excluded': 126, 'warmup': 22, 'no_overnight': 1, 'no_vix': 0}
+  out-of-sample days 878 (2017-01-03 .. 2020-12-31)
+  R2 of ln range       model +0.636   baseline (22d mean) +0.565
+  MSE of ln range      model 0.1883   baseline 0.2256
+  mean abs error       model 39.5% of the range   baseline 39.4%
+  Newey-West t (base SE - model SE, 5 lags): +3.79
+  80% band coverage    78.7%
+    2017: n 221  R2 model +0.023 base +0.020  abs err 45.1% vs 37.6%  coverage 77.4%
+    2018: n 220  R2 model +0.380 base +0.201  abs err 43.5% vs 43.8%  coverage 79.5%
+    2019: n 221  R2 model +0.104 base -0.092  abs err 35.7% vs 38.4%  coverage 75.6%
+    2020: n 216  R2 model +0.362 base +0.151  abs err 33.4% vs 37.9%  coverage 82.4%
+  last fit coefficients: const +0.132  lr1 +0.071  lr5 +0.312  lr22 +0.145  lon +0.273  lvix +0.303  fomc +0.149  mon -0.089  fri -0.068
+  2020: median forecast 181 pts, median 80% band width 205 pts, median actual 177 pts
+  last 5 days: 2020-12-23 fc 168 [103-293] act 88; 2020-12-28 fc 160 [98-279] act 114; 2020-12-29 fc 131 [80-228] act 110; 2020-12-30 fc 132 [81-230] act 89; 2020-12-31 fc 93 [57-162] act 100
+
+=== Pre-registered gates
+  1. beats baseline in both eras: PASS
+  2. era A Newey-West t >= 2:     PASS (t +5.40)
+  3. coverage 75-85% both eras:   PASS (78.6%, 78.7%)
+  VERDICT: PASS
